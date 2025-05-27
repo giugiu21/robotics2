@@ -38,7 +38,6 @@ disp(T)
 
 %%
 disp("Inertia matrix for the robot")
-pause
 
 
 %-------------Inertia Matrix--------------
@@ -48,7 +47,7 @@ M=simplify(hessian(T,dq));
 disp(M)
 
 disp("Robot Coriolis Vector")
-pause
+
 
 %-------------Cristoffel terms--------------
 
@@ -79,34 +78,45 @@ disp("potential energy of the spring")
 U =  (1/2)*k*q1^2;
 disp(U)
 
+%partial derivative of gradient Ue
+dUdq  = jacobian(U, q);
+
+disp(dUdq)
+
 
 disp("Expression of the Torque")
-tau = M * ddq + c_v + U;
+tau = M * ddq + c_v + dUdq;
 disp(tau)
 
 %%
 %------------Expression of the torque-----
 
 M_subs = subs(M, [q1, q2, dq1, dq2], [0, 0, 0, 0]);
+cv_subs = subs(c_v, [q1, q2, dq1, dq2], [0, 0, 0, 0]);
+U_subs = subs(dUdq, [q1, q2, dq1, dq2], [0, 0, 0, 0]);
 
+disp("Dynamc elements with q(0)=0 an dq(0)=0 substituted")
+disp("inertia matrix")
 disp(M_subs)
-syms t real
+disp("centrifugal and coriolis terms")
+disp(cv_subs)
+disp("potential energy gradient")
+disp(U_subs)
 
-
-ddq = inv(M_subs)*[0; t];
+syms tau2 real
+%since only the inertia matrix is different than 0 the dynamic model becomes:
+%tau1 is = 0 since the spring has no torque
+ddq = inv(M_subs)*[0; tau2];
+disp("Acceleration of the joints with q(0)=0 an dq(0)=0")
 disp(ddq)
 
 %%
-%----------------------
+%----------Control law ?------------
 
 syms Kd Kp real
 syms qd1 qd2
 dU  = [k*q1; 0];
 
-%partial derivative of gradient Ue
-dUdq  = jacobian(dU, q);
-
-disp(dUdq)
 
 disp("norm of the partial derivative")
 disp(simplify(norm(dUdq)))

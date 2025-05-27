@@ -1,5 +1,5 @@
 %Giugno 2023
-%es1 ABSOLUTE ANGLES
+%es1 ABSOLUTE ANGLES 4R
 clear all 
 
 n=4;
@@ -7,161 +7,18 @@ syms q m l dc [n 1] real
 syms dq ddq [n 1] real
 syms theta [n 1] real
 
-%position of the CoMi in RF0
 
-pcm_1=  [(dc1-l1)*cos(q1); (dc1-l1)*sin(q1)];
-pcm_2=  [l1*cos(q1)+(dc2-l2)*cos(q2); l1*sin(q1)+(dc2-l2)*sin(q2)];
-pcm_3=  [l1*cos(q1)+l2*cos(q2)+(dc3-l3)*cos(q3); l1*sin(q1)+l2*sin(q2)+(dc3-l3)*sin(q3)];
-pcm_4=  [l1*cos(q1)+l2*cos(q2)+l3*cos(q3)+(dc4-l4)*cos(q4); l1*sin(q1)+l2*sin(q2)+l3*sin(q3)+(dc4-l4)*sin(q4)];
-
-
+%mapping absolute angles
+% thetai = qi - qi-1
 B = [1, 0, 0, 0;
     1, 1, 0, 0;
     1, 1, 1, 0;
     1, 1, 1, 1];
 
-
 theta= inv(B)*[q1; q2; q3; q4];
 disp(theta)
-
-
 %%
-
-%DH parameters
-alpha = [0, 0, 0, 0]; %IMPORTANT to make pi symbolic
-a = [l1, l2, l3, l4];
-d = [0, 0, 0, 0];
-
-
-A = cell(1, n);
-A_tot = eye(4);
-
-
-for i = 1:n
-    alphai = alpha(i);
-    ai = a(i);
-    di = d(i);
-    thetai = theta(i);
-
-    A{i} =  [cos(thetai), -sin(thetai)*cos(alphai), sin(thetai)*sin(alphai), ai*cos(thetai);
-            sin(thetai), cos(thetai)*cos(alphai), -cos(thetai)*sin(alphai), ai*sin(thetai);
-            0, sin(alphai), cos(alphai), di;
-            0, 0, 0, 1];
-
-    %complete DH matrix for the robot
-
-    A_tot = simplify(A_tot * A{i}); 
-
-end 
-
-%extracting from the homogeneous matrices the rotation matrices and
-%positions for each joint
-
-R1 = A{1}(1:3,1:3);
-p1 = A{1}(1:3,4);
-
-R2 = A{2}(1:3,1:3); 
-p2 = A{2}(1:3,4);
-
-R3 = A{3}(1:3,1:3); 
-p3 = A{3}(1:3,4);
-
-R4 = A{4}(1:3,1:3); 
-p4 = A{4}(1:3,4);
-
-
-disp("Rotation matrices")
-disp(R1)
-disp(R2)
-disp(R3)
-disp(R4)
-
-disp("Origin's position in RFi-1")
-pause
-
-disp(p1)
-disp(p2)
-disp(p3)
-disp(p4)
-
-%position vectors from origin i-1 to origin i in frame i
-% ip = i-1Ri' * i-1p !!! i am doing this computation here
-% i-1p = i-1Ri * ip
-
-r01 = simplify(R1'*p1);
-r12 = simplify(R2'*p2);
-r23 = simplify(R3'*p3);
-r34 = simplify(R4'*p4);
-
-disp("Position vectors from origin i-1 to origin i in frame i")
-pause 
-
-
-disp(r01)
-disp(r12)
-disp(r23)
-disp(r34)
-
-
-%!!!CoM position vector is the vector from the origin of frame i to the CMi
-% expressed in frame i
-%in this case we assume it to be in the kinematic axis of each link
-%if we define di as the distance between origin of frame i to CMi
-
-%Understanding the link axis from DH parameters:
-%if alpha_i = 0 the link extends on x-axis of frame i
-%if alpha_i = pi/2 the link extends on y_axis of frame i
-%if alpha_i = pi the link extends on -x-axis of frame i
-
-% to find the link lengths look at the ai parameter:
-%in this case a2 and a3 are our link lengths 
-
-%we define d1 d2 d3 as the distance between origin i-1 and position of CoMi
-
-rc_1 = [dc1 - l1; 0; 0];
-
-rc_2= [dc2 - l2; 0; 0];
-
-rc_3= [dc3 - l3; 0; 0];
-
-rc_4= [dc4 - l4; 0; 0];
-
-
-disp("Position vectors in frame i for CoMi for each link")
-disp(rc_1)
-disp(rc_2)
-disp(rc_3)
-disp(rc_4)
-
-disp("CoM position vectors in RF0")
-pause
-
-
-% ip = i-1Ri' * i-1p 
-% i-1p = i-1Ri * ip !!i am doing this computation here
-
-rc_01 = simplify((R1*rc_1) + p1);
-disp(rc_01)
-rc_02 = simplify((R1* (R2*rc_2)) + R1*p2 + p1);
-disp(rc_02)
-rc_03 = simplify((R1*(R2*(R3*rc_3))) + R1*(R2*p3) + R1*p2 + p1);
-disp(rc_03)
-rc_04 = simplify((R1*(R2*(R3*(R4*rc_4)))) + R1*(R2*(R3*p4)) + R1*(R2*p3) + R1*p2 + p1);
-disp(rc_04)
-
-disp("MOVING FRAMES ALGORITHM")
-pause
-
-%-------MOVING FRAMES ALGORITHM-------
-
-
-%Defining the sigma as: 0 if revolute joint, 1 if prismatic
-s1 = 0;
-s2 = 0;
-s3 = 0;
-s4 = 0;
-
-
+% ----------Dynamic model-----------
 %if the robot were planar  
 syms Ic1 Ic2 Ic3 Ic4 real
 
@@ -170,110 +27,123 @@ syms Ic1 Ic2 Ic3 Ic4 real
 %Ic1 = diag([Ic_xx_1, Ic_yy_1, Ic_zz_1]);
 %Ic2 = diag([Ic_xx_2, Ic_yy_2, Ic_zz_2]);
 %Ic3 = diag([Ic_xx_3, Ic_yy_3, Ic_zz_3]);
+ 
+q = [q1; q2; q3; q4];
+
+%In this case all joints are revolute so kinetic energy is composed of
+%translational and rotational.
+
+% joint 1 
+%position of the CoMi in RF0
+x1 = dc1*cos(q1);
+y1 = dc1*sin(q1);
+
+%velocity of CoMi
+vx1 = diff(x1,q1)*dq1 + diff(x1,q2)*dq2 + diff(x1,q3)*dq3 + diff(x1,q4)*dq4;
+vy1 = diff(y1,q1)*dq1 + diff(y1,q2)*dq2 + diff(y1,q3)*dq3 + diff(y1,q4)*dq4;
+vc1 = [vx1; vy1];
+disp("Velocity CoM")
+disp(vc1);
+
+%angular velocity
+w1 = [0; 0; dq1]; %absolute angles
+
+disp("Joint 1")
+T1_tr = (1/2)* m1 * vc1'*vc1;
+T1_rot = (1/2)* Ic1 * w1'*w1;
+T1 = simplify(T1_tr + T1_rot);
+disp("Kinetic energy")
+disp(T1);
+
+% joint 2 
+%position of the CoMi in RF0
+x2 = l1*cos(q1)+dc2*cos(q2);
+y2 = l1*sin(q1)+dc2*sin(q2);
+
+%velocity of CoMi
+vx2 = diff(x2,q1)*dq1 + diff(x2,q2)*dq2 + diff(x2,q3)*dq3 + diff(x2,q4)*dq4;
+vy2 = diff(y2,q1)*dq1 + diff(y2,q2)*dq2 + diff(y2,q3)*dq3 + diff(y2,q4)*dq4;
+vc2 = [vx2; vy2];
+disp("Velocity CoM")
+disp(vc2);
+
+%angular velocity
+w2 = [0; 0; dq2]; %absolute angles
+
+disp("Joint 2")
+T2_tr = (1/2)* m2 * vc2'*vc2;
+T2_rot = (1/2)* Ic2 * w2'*w2;
+T2 = simplify(T2_tr + T2_rot);
+disp("Kinetic energy")
+disp(T2);
 
 
-T = cell(1, n);
-%w = cell(1, n);
-v = cell(1, n);
-vc = cell(1, n);
+% joint 3
+%position of the CoMi in RF0
+x3 = l1*cos(q1)+l2*cos(q2)+dc3*cos(q3);
+y3 = l1*sin(q1)+l2*sin(q2)+dc3*sin(q3);
 
-%set up to change if we have more joints
-s={s1, s2, s3, s4};
-dq = {dq1, dq2, dq3, dq4};
+%velocity of CoMi
+vx3 = diff(x3,q1)*dq1 + diff(x3,q2)*dq2 + diff(x3,q3)*dq3 + diff(x3,q4)*dq4;
+vy3 = diff(y3,q1)*dq1 + diff(y3,q2)*dq2 + diff(y3,q3)*dq3 + diff(y3,q4)*dq4;
+vc3 = [vx3; vy3];
+disp("Velocity CoM")
+disp(vc3);
 
-R = {R1, R2, R3, R4};
-r = {r01, r12, r23, r34};
-rc = {rc_1, rc_2, rc_3, rc_4};
-m = {m1, m2, m3, m4};
-Ic = {Ic1, Ic2, Ic3, Ic4};
+%angular velocity
+w3 = [0; 0; dq3]; %absolute angles
 
-
-%Absolute angles
-w1 =  [0; 0; dq1];
-w2 =  [0; 0; dq2];
-w3 =  [0; 0; dq3];
-w4 =  [0; 0; dq4];
-
-w = {w1, w2, w3, w4};
+disp("Joint 3")
+T3_tr = (1/2)* m3 * vc3'*vc3;
+T3_rot = (1/2)* Ic3 * w3'*w3;
+T3 = simplify(T3_tr + T3_rot);
+disp("Kinetic energy")
+disp(T3);
 
 
-for i = 1:n
-    Ri = R{i};
-    si = s{i};
-    dqi = dq{i};
-    ri = r{i};
-    rci  = rc{i};
-    mi = m{i};
-    Ici = Ic{i};
-    wi  = w{i};
+% joint 4
+%position of the CoMi in RF0
+x4 = l1*cos(q1)+l2*cos(q2)+l3*cos(q3)+dc4*cos(q4);
+y4 = l1*sin(q1)+l2*sin(q2)+l3*sin(q3)+dc4*sin(q4);
 
-    %initialization if first frame = 0
-    if i == 1
-        %wi_1 = 0;
-        vi_1 = 0;
-    else
-        %wi_1 = w{i-1};
-        vi_1 = v(i-1);
-    end
+%velocity of CoMi
+vx4 = diff(x4,q1)*dq1 + diff(x4,q2)*dq2 + diff(x4,q3)*dq3 + diff(x4,q4)*dq4;
+vy4 = diff(y4,q1)*dq1 + diff(y4,q2)*dq2 + diff(y4,q3)*dq3 + diff(y4,q4)*dq4;
+vc4 = [vx4; vy4];
+disp("Velocity CoM")
+disp(vc4);
 
-    %w{i} = simplify(transpose(Ri)*(wi_1+(1-si)*dqi*[0; 0; 1]));
+%angular velocity
+w4 = [0; 0; dq4]; %absolute angles
 
-    %wi = w{i};
-
-    v{i} = simplify(transpose(Ri)*(vi_1+(si)*dqi*[0; 0; 1]) + cross(wi,ri));
-
-    vi = v{i};
-
-    vc{i} = simplify(vi + cross(wi,rci));
-
-    vci = vc{i};
-
-    T{i} = simplify((1/2)*mi*transpose(vci)*vci + (1/2)*transpose(wi)*Ici*wi);
-    
-end 
+disp("Joint 4")
+T4_tr = (1/2)* m4 * vc4'*vc4;
+T4_rot = (1/2)* Ic4 * w4'*w4;
+T4 = simplify(T4_tr + T4_rot);
+disp("Kinetic energy")
+disp(T4);
 
 
-for i = 1:n
-    disp("Joint")
-    disp(i)
-    disp("Angular velocity:")
-    disp(w{i})
-    disp("Linear velocity:")
-    disp(v{i})
-    disp("CoM linear velocity:")
-    disp(vc{i})
-    disp("Kinetic energy:")
-    disp(T{i})
-end
-
+% Total Energy
+T = T1+T2+T3+T4;
 disp("Total kinetic energy")
-pause
-
-
-%Total kinetic Energy of the Robot 
-T_tot = T{1} +T{2} +T{3} + T{4};
-T_tot=simplify(T_tot);
-T_tot=collect(T_tot,dq1^2);
-T_tot=collect(T_tot,dq2^2);
-T_tot=collect(T_tot,dq3^3);
-T_tot=collect(T_tot,dq4^4);
-disp(T_tot)
-
+disp(T)
 
 disp("Inertia matrix for the robot")
-pause
-
 
 %-------------Inertia Matrix--------------
-dq = [dq1; dq2; dq3; dq4];
 
-M=simplify(hessian(T_tot,dq));
+q_dot = [dq1; dq2; dq3; dq4];
+
+M=simplify(hessian(T,q_dot));
 disp(M)
+
 %%
 
 %Defining B for the absolute angles
 
-M_theta = B'*M*B
+M_theta = B'*M*B;
+disp(M_theta)
 
 %%
 %es 2

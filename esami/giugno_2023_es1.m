@@ -50,7 +50,7 @@ w1 = [0; 0; dq1]; %absolute angles
 
 disp("Joint 1")
 T1_tr = (1/2)* m1 * vc1'*vc1;
-T1_rot = (1/2)* Ic1 * w1'*w1;
+T1_rot = (1/2)* w1'* Ic1 * w1;
 T1 = simplify(T1_tr + T1_rot);
 disp("Kinetic energy")
 disp(T1);
@@ -72,7 +72,7 @@ w2 = [0; 0; dq2]; %absolute angles
 
 disp("Joint 2")
 T2_tr = (1/2)* m2 * vc2'*vc2;
-T2_rot = (1/2)* Ic2 * w2'*w2;
+T2_rot = (1/2)* w2'* Ic2 * w2;
 T2 = simplify(T2_tr + T2_rot);
 disp("Kinetic energy")
 disp(T2);
@@ -95,7 +95,7 @@ w3 = [0; 0; dq3]; %absolute angles
 
 disp("Joint 3")
 T3_tr = (1/2)* m3 * vc3'*vc3;
-T3_rot = (1/2)* Ic3 * w3'*w3;
+T3_rot = (1/2)* w3'* Ic3 * w3;
 T3 = simplify(T3_tr + T3_rot);
 disp("Kinetic energy")
 disp(T3);
@@ -118,7 +118,7 @@ w4 = [0; 0; dq4]; %absolute angles
 
 disp("Joint 4")
 T4_tr = (1/2)* m4 * vc4'*vc4;
-T4_rot = (1/2)* Ic4 * w4'*w4;
+T4_rot = (1/2)* w4'* Ic4 * w4;
 T4 = simplify(T4_tr + T4_rot);
 disp("Kinetic energy")
 disp(T4);

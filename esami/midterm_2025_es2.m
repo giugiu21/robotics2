@@ -146,6 +146,7 @@ Ic2 = diag([Ic_xx_2, Ic_yy_2, Ic_zz_2]);
 Ic3 = diag([Ic_xx_3, Ic_yy_3, Ic_zz_3]);
 
 
+
 T = cell(1, n);
 w = cell(1, n);
 v = cell(1, n);
@@ -255,7 +256,7 @@ for i=1:n
 
 end 
 
-c_v=[c{1}; c{2}];
+c_v=[c{1}; c{2}; c{3}];
 disp(c_v)
 
 

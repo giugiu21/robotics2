@@ -1,35 +1,19 @@
-%PR planar robot in the vertical plane
-%dynamic model
-clear all
+%2R dynamic model viscous friction
+%planar robot
 
 n=2;
 
-syms q m l [n 1] real
-syms dc2 real 
+syms q l dc m [n 1] real
 syms dq ddq [n 1] real
 
+syms Ic1 Ic2 real %robot is planar
 
-%if the robot were planar  
-%syms Ic1 Ic2 real
-syms Ic2 real %only second joint is revolute
+q =  [q1; q2];
 
-
-%the robot is polar so
-%syms Ic_xx_1 Ic_yy_1 Ic_zz_1 Ic_xx_2 Ic_yy_2 Ic_zz_2
-%Ic1 = diag([Ic_xx_1, Ic_yy_1, Ic_zz_1]);
-%Ic2 = diag([Ic_xx_2, Ic_yy_2, Ic_zz_2]);
-
-q = [q1; q2];
-
-
-%THE IMPORTANT THING IS THAT THE REFERENCE FRAMES ARE CONCORDANT
-
-% joint 1 
-%position of the CoMi in RF0
-
-%for joint 1 the CoM is = to the origin of frame 1 = frame 0
-x1 = q1;
-y1 = 0;
+% joint 1
+%position of the CoMi in RFi
+x1 = dc1*cos(q1);
+y1 = dc1*sin(q1);
 rc_01 = [x1; y1];
 
 %velocity of CoMi
@@ -39,20 +23,21 @@ vc1 = [vx1; vy1];
 disp("Velocity CoM")
 disp(vc1);
 
-%angular velocity in frame 0
-%first joint is prismatic so no rotational energy and no angular velocity
+%angular velocity
+w1 = [0; 0; dq1]; 
 
 disp("Joint 1")
-T1_tr = (1/2)* m1 * vc1'*vc1;
-T1 = simplify(T1_tr);
+T1_tr = (1/2)* m1 * vc1'* vc1;
+T1_rot = (1/2)*  w1' * Ic1 * w1;
+T1 = simplify(T1_tr + T1_rot);
 disp("Kinetic energy")
 disp(T1);
 
 
 % joint 2 
 %position of the CoMi in RFi
-x2 = q1 + dc2*cos(q2);
-y2 = dc2*sin(q2);
+x2 = l1*cos(q1);
+y2 = l1*sin(q1);
 rc_02 = [x2; y2];
 
 %velocity of CoMi
@@ -63,7 +48,7 @@ disp("Velocity CoM")
 disp(vc2);
 
 %angular velocity
-w2 = [0; 0; dq2]; 
+w2 = [0; 0; dq1+dq2]; 
 
 disp("Joint 2")
 T2_tr = (1/2)* m2 * vc2'* vc2;
@@ -72,13 +57,12 @@ T2 = simplify(T2_tr + T2_rot);
 disp("Kinetic energy")
 disp(T2);
 
-
-%%
 %Total kinetic Energy of the Robot 
 T_tot = T1 +T2;
 T_tot=simplify(T_tot);
 T_tot=collect(T_tot,dq1^2);
 T_tot=collect(T_tot,dq2^2);
+disp("Total kinetic energy for the robot")
 disp(T_tot)
 
 
@@ -90,10 +74,7 @@ dq = [dq1; dq2];
 
 M=simplify(hessian(T_tot,dq));
 disp(M)
-
 %%
-disp("Robot Coriolis Vector")
-
 %-------------Cristoffel terms--------------
 
 C = cell(1, n); %Christoffel matrices
@@ -114,15 +95,14 @@ for i=1:n
 end 
 
 c_v=[c{1}; c{2}];
+disp("coriolis vector")
 disp(c_v)
-
 
 %-------------Gravity term--------------
 
 disp("Potential Energy for each link")
-pause
 
-syms g0
+syms g0 dc1 dc2 m1 m2 real
 % vector gravity acceleration this depends on the drawing
 %see how the vector is represented in RF0
 
@@ -131,11 +111,12 @@ g=[g0; 0];%in this case it was concordant with x0-axis
 U = cell(1, n);
 %position of each CoM in RF0
 rc_0 = {rc_01, rc_02};
+
 m = {m1, m2};
 
 for i=1:n
-    mi = m{i};
     rc_0i = rc_0{i};
+    mi = m{i};
 
     U{i} = simplify(-mi * transpose(g) * rc_0i);
 
@@ -147,6 +128,7 @@ for i = 1:n
     disp(U{i})
 end
 
+
 disp("Total potential energy for the robot")
 
 U_tot = simplify(U{1} + U{2});
@@ -155,42 +137,33 @@ disp(U_tot)
 
 G=transpose(jacobian(U_tot,q));
 
-disp("Gravity term for the robot g(q)")
+disp("Gravity term")
 disp(G)
 
-tau = M*ddq+c_v+G;
-disp(tau)
-
 %%
-disp(simplify(M*[ddq1; 0]))
+%-------------Minimal parametrization of the model--------------
 
-%%
-%PP robot
-clear all 
+ddq = [ddq1; ddq2];
 
-n=2;
+%viscous friction 
+syms Fv1 Fv2 real
+Fv_dq = [Fv1*dq1; Fv2*dq2];
 
-syms q m l [n 1] real 
-syms dq ddq [n 1] real
-
-T1=  (1/2)*m1*dq1^2;
-T2=  (1/2)*m2*(dq1^2 + dq2^2);
-
-%Total kinetic Energy of the Robot 
-T_tot = T1 +T2;
-T_tot=simplify(T_tot);
-T_tot=collect(T_tot,dq1^2);
-T_tot=collect(T_tot,dq2^2);
-disp(T_tot)
+%First you need to find it by hand and then you can substitute
+syms a1 a2 a3 a4 a5 real
+a = [m1*dc1^2+m2*l1^2+Ic1+Ic2; Ic2; g0*(m1*dc1+l1*m2); Fv1; Fv2];
+a_symb = [a1; a2; a3; a4; a5];
 
 
-disp("Inertia matrix for the robot")
+tau = M*ddq+c_v+G+Fv_dq;
+tau_subs = subs(tau, a, a_symb);
 
+disp(tau_subs)
 
-%-------------Inertia Matrix--------------
-dq = [dq1; dq2];
+Y = jacobian(tau_subs, a_symb);
 
-M=simplify(hessian(T_tot,dq));
-disp(M)
+Y=subs(Y, a_symb, a);
 
+disp("REGRESSOR MATRIX")
+disp(Y)
 

@@ -1,18 +1,22 @@
-%dynamic model 2R polar
-
+%RPR polar robot 
 clear all
 
-n= 2;
+n = 3; %number of joints
 
-syms q l m dc [n 1] real
+syms l dc m q [n 1] real
+syms dq [n 1] real
+syms ddq [n 1] real
 
-syms dq ddq [n 1] real
+
+q = [q1; q2; q3];
+%dq = [dq1; dq2; dq3]; to define later
+ddq = [ddq1; ddq2; ddq3];
 
 %DH parameters
-alpha = [sym(pi)/2, 0]; %IMPORTANT to make pi symbolic
-a = [0, l2];
-d = [l1, 0];
-theta = [q1, q2];
+alpha = [sym(pi)/2, -sym(pi)/2, 0]; %IMPORTANT to make pi symbolic
+a = [0, 0, l3];
+d = [l1, q2, 0];
+theta = [q1, sym(pi)/2, q3];
 
 A = cell(1, n);
 A_tot = eye(4);
@@ -44,18 +48,20 @@ p1 = A{1}(1:3,4);
 R2 = A{2}(1:3,1:3); 
 p2 = A{2}(1:3,4);
 
+R3 = A{3}(1:3,1:3); 
+p3 = A{3}(1:3,4);
 
 disp("Rotation matrices")
 disp(R1)
 disp(R2)
-
+disp(R3)
 
 disp("Origin's position in RFi-1")
 pause
 
 disp(p1)
 disp(p2)
-
+disp(p3)
 
 %position vectors from origin i-1 to origin i in frame i
 % ip = i-1Ri' * i-1p !!! i am doing this computation here
@@ -63,7 +69,7 @@ disp(p2)
 
 r01 = simplify(R1'*p1);
 r12 = simplify(R2'*p2);
-
+r23 = simplify(R3'*p3);
 
 disp("Position vectors from origin i-1 to origin i in frame i")
 pause 
@@ -71,7 +77,7 @@ pause
 
 disp(r01)
 disp(r12)
-
+disp(r23)
 
 
 %!!!CoM position vector is the vector from the origin of frame i to the CMi
@@ -89,16 +95,17 @@ disp(r12)
 
 %we define d1 d2 d3 as the distance between origin i-1 and position of CoMi
 
-rc_1 = [0; dc1 - l1; 0];
+rc_1 = [0; l1 - dc1; 0];
 
-rc_2= [dc2 - l2; 0; 0];
+rc_2= [0; dc2; 0];
 
-
+rc_3= [dc3 - l3; 0; 0];
 
 
 disp("Position vectors in frame i for CoMi for each link")
 disp(rc_1)
 disp(rc_2)
+disp(rc_3)
 
 disp("CoM position vectors in RF0")
 pause
@@ -111,7 +118,8 @@ rc_01 = simplify((R1*rc_1) + p1);
 disp(rc_01)
 rc_02 = simplify((R1* (R2*rc_2)) + R1*p2 + p1);
 disp(rc_02)
-
+rc_03 = simplify((R1*(R2*(R3*rc_3))) + R1*(R2*p3) + R1*p2 + p1);
+disp(rc_03)
 
 
 disp("MOVING FRAMES ALGORITHM")
@@ -122,7 +130,8 @@ pause
 
 %Defining the sigma as: 0 if revolute joint, 1 if prismatic
 s1 = 0;
-s2 = 0;
+s2 = 1;
+s3 = 0;
 
 
 %if the robot were planar  
@@ -130,8 +139,11 @@ s2 = 0;
 
 %the robot is polar so
 syms Ic_xx_1 Ic_yy_1 Ic_zz_1 Ic_xx_2 Ic_yy_2 Ic_zz_2 real
+syms Ic_3 %third link has diagonal and isotropic barycentric inertia matrix
+
 Ic1 = diag([Ic_xx_1, Ic_yy_1, Ic_zz_1]);
 Ic2 = diag([Ic_xx_2, Ic_yy_2, Ic_zz_2]);
+Ic3 = diag([Ic_3, Ic_3, Ic_3]);
 
 
 T = cell(1, n);
@@ -140,14 +152,14 @@ v = cell(1, n);
 vc = cell(1, n);
 
 %set up to change if we have more joints
-s={s1, s2};
-dq = {dq1, dq2};
+s={s1, s2, s3};
+dq = {dq1, dq2, dq3};
 
-R = {R1, R2};
-r = {r01, r12};
-rc = {rc_1, rc_2};
-m = {m1, m2};
-Ic = {Ic1, Ic2};
+R = {R1, R2, R3};
+r = {r01, r12, r23};
+rc = {rc_1, rc_2, rc_3};
+m = {m1, m2, m3};
+Ic = {Ic1, Ic2, Ic3};
 
 
 for i = 1:n
@@ -203,110 +215,39 @@ pause
 
 
 %Total kinetic Energy of the Robot 
-T_tot = T{1} +T{2};
+T_tot = T{1} +T{2} +T{3};
 T_tot=simplify(T_tot);
 T_tot=collect(T_tot,dq1^2);
 T_tot=collect(T_tot,dq2^2);
+T_tot=collect(T_tot,dq3^3);
 disp(T_tot)
 
-
 disp("Inertia matrix for the robot")
+pause
 
 
 %-------------Inertia Matrix--------------
-dq = [dq1; dq2];
+dq = [dq1; dq2; dq3];
 
 M=simplify(hessian(T_tot,dq));
 disp(M)
 
 %%
-disp("Robot Coriolis Vector")
-
-%-------------Cristoffel terms--------------
-
-C = cell(1, n); %Christoffel matrices
-c = cell(1, n);
-
-for i=1:n
-
-    Mi = M(:,i);
-    qi = q(i);
-
-    Ci = (1/2)*(jacobian(Mi,q) + jacobian(Mi,q)' - diff(M,qi));
-
-    C{i} = Ci;
-
-    ci = dq' * Ci * dq;
-    c{i} = ci;
-
-end 
-
-c_v=[c{1}; c{2}];
-c_v = simplify(c_v);
-disp(c_v)
-
-%%
-%-------------Gravity term--------------
-
-disp("Potential Energy for each link")
-
-syms g0
-% vector gravity acceleration this depends on the drawing
-%see how the vector is represented in RF0
-
-g=[0; 0; -g0];%in this case it was opposite of z0-axis
-q = [q1; q2];
-
-
-U = cell(1, n);
-%position of each CoM in RF0
-rc_0 = {rc_01, rc_02};
-m = {m1, m2};
-
-for i=1:n
-    mi = m{i};
-    rc_0i = rc_0{i};
-
-    U{i} = simplify(-mi * transpose(g) * rc_0i);
-
-end
-
-for i = 1:n
-    disp("Joint")
-    disp(i)
-    disp(U{i})
-end
-
-disp("Total potential energy for the robot")
-
-U_tot = simplify(U{1} + U{2});
-
-disp(U_tot)
-
-G=transpose(jacobian(U_tot,q));
-
-disp("Gravity term for the robot g(q)")
-disp(G)
-
-
-%%
-
 %-------------Minimal parametrization of the model--------------
 
-ddq = [ddq1; ddq2];
+ddq = [ddq1; ddq2; ddq3];
+
 
 %First you need to find it by hand and then you can substitute
-syms a1 a2 a3 a4 real
-a = [m2*dc2^2+Ic_yy_2+Ic_yy_1; -m2*dc2^2-Ic_yy_2+Ic_xx_2; m2*dc2^2+Ic_zz_2; g0*dc2*m2];
-a_symb = [a1; a2; a3; a4];
+syms a1 a2 a3 a4 a5 real
+a = [m1*dc1^2+m2*l1^2+Ic1+Ic2; Ic2; g0*(m1*dc1+l1*m2); Fv1; Fv2];
+a_symb = [a1; a2; a3; a4; a5];
 
-%since we did some semplifications with sin and cos we rewrite M
 
-M2=  [m2*dc2^2+Ic_yy_2+Ic_yy_1+(-m2*dc2^2-Ic_yy_2+Ic_xx_2)*sin(q2)^2, 0;
-       0, m2*dc2^2+Ic_zz_2];
-
-tau = M2*ddq+c_v+G;
+tau = M*ddq+c_v+G+Fv_dq;
 tau_subs = subs(tau, a, a_symb);
+
+disp(tau_subs)
 
 Y = jacobian(tau_subs, a_symb);
 
@@ -314,47 +255,3 @@ Y=subs(Y, a_symb, a);
 
 disp("REGRESSOR MATRIX")
 disp(Y)
-   
-%%
- 
-
-disp("SKEW SYMMETRIC MATRIX Computation")
-
-% Compute Mdot (time derivative of M)
-%Mdot = sym(zeros(n));
-
-%for i = 1:n
-%    for j = 1:n
-%        for k = 1:n
-%            Mdot(i,j) = Mdot(i,j) + diff(M(i,j), q(k)) * dq(k);
-%        end
-%    end
-%end
-
-%Mdot = simplify(Mdot);
-
-% Compute Mdot (time derivative of M)
-%add if you have more joints in this case they were 3
-
-dM = simplify(diff(M,q1)*dq1+diff(M,q2)*dq2);
-
-
-%they should be n matrices
-disp("Ci matrices")
-disp(C{1})
-disp(C{2})
-
-
-S = [dq' * C{1};
-      dq' * C{2}];
-
-S = simplify(S);
-disp("S(q, dq):")
-disp(S)
-
-disp("Skew Symmetric Matrix")
-skew= simplify(dM-2*S);
-disp(skew)
-disp("The matrix is skew symmetric if these values are = 0")
-disp(simplify([1; 1]'*skew*[1; 1]))%this should be = 0
-disp(skew'+ skew)%this should be = 0
